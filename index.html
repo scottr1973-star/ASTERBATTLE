@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Neon Star Run — Splash Fixed</title>
+<title>Neon Star Run — Free-Flight + Detailed Enemies</title>
 <style>
   :root{
     --fg:#e6f1ff; --bg0:#060910; --bg1:#0b1530;
@@ -169,27 +169,16 @@ const startCard=document.getElementById('startCard');
 const btnStart=document.getElementById('btnStart');
 const pauseOverlay=document.getElementById('pauseOverlay');
 
-/* ===== Splash: super-stable, guard against double starts ===== */
+/* ===== Splash: stable ===== */
 let started=false, paused=false;
 function removeSplash(){ if(startOverlay && startOverlay.parentNode){ startOverlay.parentNode.removeChild(startOverlay); } }
-function startGame(){
-  if(started) return;
-  started=true;
-  removeSplash();
-  audio.start(); // prime audio after a user gesture
-}
-// start by button
+function startGame(){ if(started) return; started=true; removeSplash(); audio.start(); }
 btnStart.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); startGame(); });
-// start by clicking the dimmed background (not the card, not links)
-startOverlay.addEventListener('click', (e)=>{
-  if(e.target===startOverlay) startGame();
-});
-// touch anywhere not a link/card body also starts
+startOverlay.addEventListener('click', (e)=>{ if(e.target===startOverlay) startGame(); });
 startOverlay.addEventListener('touchstart', (e)=>{
   const onLink = !!e.target.closest('a');
   if(!onLink && !e.target.closest('#startCard')){ e.preventDefault(); startGame(); }
 }, {passive:false});
-// keyboard fallback
 document.addEventListener('keydown', (e)=>{ if(!started && (e.code==='Enter'||e.code==='Space')) startGame(); });
 
 /* ===== Audio ===== */
@@ -246,11 +235,11 @@ const grid=new THREE.GridHelper(2400,160,0x00ffff,0x00ffff);
 grid.material.transparent=true; grid.material.opacity=0.22; world.add(grid);
 
 /* Stars (slow, lightweight) */
-const STAR_COUNT=800;
+const STAR_COUNT=700;
 const starGeo=new THREE.BufferGeometry(), starPos=new Float32Array(STAR_COUNT*3);
 for(let i=0;i<STAR_COUNT;i++){
-  starPos[i*3]=(Math.random()-0.5)*320;
-  starPos[i*3+1]=Math.random()*160+10;
+  starPos[i*3]=(Math.random()-0.5)*360;
+  starPos[i*3+1]=Math.random()*170+8;
   starPos[i*3+2]=-Math.random()*1400-80;
 }
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
@@ -258,16 +247,16 @@ const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({size:1.0,color:0x
 world.add(stars);
 
 /* Speed lines (slow) */
-const SPEED_LINES=200;
+const SPEED_LINES=180;
 const spdGeo=new THREE.BufferGeometry(), spdPos=new Float32Array(SPEED_LINES*6);
 function resetLine(i, zoff= -1200*Math.random()-80){
-  const x=(Math.random()-0.5)*28, y=Math.random()*9+1.5, z=zoff, len=(Math.random()*5+3);
+  const x=(Math.random()-0.5)*32, y=Math.random()*10+1.2, z=zoff, len=(Math.random()*5+3);
   spdPos[i*6+0]=x; spdPos[i*6+1]=y; spdPos[i*6+2]=z;
   spdPos[i*6+3]=x; spdPos[i*6+4]=y; spdPos[i*6+5]=z+len;
 }
 for(let i=0;i<SPEED_LINES;i++) resetLine(i);
 spdGeo.setAttribute('position', new THREE.BufferAttribute(spdPos,3));
-const speedLines=new THREE.LineSegments(spdGeo, new THREE.LineBasicMaterial({ color:0x77e5ff, transparent:true, opacity:0.35 }));
+const speedLines=new THREE.LineSegments(spdGeo, new THREE.LineBasicMaterial({ color:0x77e5ff, transparent:true, opacity:0.32 }));
 world.add(speedLines);
 
 /* Player ship */
@@ -289,75 +278,103 @@ const playerShip=new THREE.Group();
 scene.add(playerShip);
 
 /* Game state */
-const player={ x:0,y:4.6, hp:100, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
+const player={ x:0,y:5.2, hp:100, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
 bestEl.textContent=player.best; hpEl.textContent=player.hp; scoreEl.textContent=player.score;
 
 const enemies=[], enemyLasers=[], lasers=[], missiles=[], fx=[];
 let gameTime=0;
 
-/* Rounded enemy ships (15-style) */
+/* ===== Detailed rounded enemy ships (15-style, more outlines/panels) ===== */
 const ENEMY_PALETTE=[0xff6d00,0xffd400,0x00ff88,0xff4081,0x66ff00];
-function buildEnemyRounded15(color){
+function buildEnemyDetailed(color){
   const g=new THREE.Group();
-  const bodyMat = new THREE.MeshBasicMaterial({ color });
-  const darkMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  const fuseCore = new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.25,10,18), bodyMat);
-  fuseCore.rotation.x = Math.PI/2; fuseCore.position.set(0,0,0.15);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.38,0.75,24), new THREE.MeshBasicMaterial({color:0xffffff}));
-  nose.rotation.x=Math.PI/2; nose.position.set(0,0,1.05);
-  const wingGeo = new THREE.CylinderGeometry(0.05,0.18,1.2,14);
-  const wingL = new THREE.Mesh(wingGeo, bodyMat); wingL.rotation.set(0,0,Math.PI/2); wingL.position.set(-0.75,-0.05,-0.1);
+  const bright = new THREE.MeshBasicMaterial({ color });
+  const dark = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+  // Fuselage (rounded)
+  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.48,1.35,14,20), bright);
+  fuse.rotation.x = Math.PI/2; fuse.position.set(0,0,0.1);
+
+  // Nose
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.40,0.8,28), white);
+  nose.rotation.x=Math.PI/2; nose.position.set(0,0,1.18);
+
+  // Wings (swept)
+  const wingGeo = new THREE.CylinderGeometry(0.06,0.22,1.35,16);
+  const wingL = new THREE.Mesh(wingGeo, bright); wingL.rotation.set(0,0,Math.PI/2); wingL.position.set(-0.85,-0.05,-0.1);
   const wingR = wingL.clone(); wingR.position.x*=-1;
-  const thr = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.06,12,32), new THREE.MeshBasicMaterial({color:0x00ffff, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending}));
-  thr.rotation.x=Math.PI/2; thr.position.set(0,0,-0.85);
-  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.22,18,16), new THREE.MeshBasicMaterial({color:0x111111}));
-  canopy.position.set(0,0.1,0.2);
-  const win1 = new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.16), darkMat); win1.position.set(0,0.18,0.45); win1.rotation.x=-Math.PI/2.2;
-  const win2 = new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.14), darkMat); win2.position.set(0,0.16,0.15); win2.rotation.x=-Math.PI/2.2;
-  const outlineGeo = new THREE.EdgesGeometry(new THREE.CapsuleGeometry(0.5,1.1,8,12));
-  const outline = new THREE.LineSegments(outlineGeo, new THREE.LineBasicMaterial({color:0x000000, opacity:0.85, transparent:true}));
-  g.add(fuseCore,nose,wingL,wingR,thr,canopy,win1,win2,outline);
+
+  // Tail ring / thruster glow
+  const thr = new THREE.Mesh(new THREE.TorusGeometry(0.26,0.065,14,40),
+    new THREE.MeshBasicMaterial({color:0x66f7ff, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending}));
+  thr.rotation.x=Math.PI/2; thr.position.set(0,0,-0.98);
+
+  // Canopy and windows
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.24,20,18), new THREE.MeshBasicMaterial({color:0x0b0b0b}));
+  canopy.position.set(0,0.1,0.25);
+  const win1 = new THREE.Mesh(new THREE.PlaneGeometry(0.46,0.18), dark); win1.position.set(0,0.20,0.48); win1.rotation.x=-Math.PI/2.2;
+  const win2 = new THREE.Mesh(new THREE.PlaneGeometry(0.38,0.15), dark); win2.position.set(0,0.17,0.16); win2.rotation.x=-Math.PI/2.2;
+
+  // Panel lines (thin additive lines across fuselage)
+  const panelMat = new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.9});
+  const panelGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(-0.5,0,0.2), new THREE.Vector3(0.5,0,0.2) ]);
+  const panel1 = new THREE.Line(panelGeo, panelMat);
+  const panel2 = panel1.clone(); panel2.position.z = -0.2;
+  const panel3 = panel1.clone(); panel3.position.z = -0.5;
+
+  // Outlines for major parts
+  const outlines = new THREE.Group();
+  const oFuse = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CapsuleGeometry(0.5,1.2,10,16)),
+                    new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.9}));
+  const oWings = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.6,0.15,0.7)),
+                    new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.9}));
+  oWings.position.set(0,-0.05,-0.1);
+  outlines.add(oFuse,oWings);
+
+  g.add(fuse,nose,wingL,wingR,thr,canopy,win1,win2,panel1,panel2,panel3,outlines);
   return g;
 }
+
 function difficulty(){
   const t=Math.min(gameTime/120,1);
   return { enemySpeed: 14+(42-14)*t, spawnMin: 1.5+(0.7-1.5)*t, spawnMax: 2.0+(1.0-2.0)*t };
 }
 function spawnEnemy(){
-  const g=buildEnemyRounded15(ENEMY_PALETTE[(Math.random()*ENEMY_PALETTE.length)|0]);
-  g.position.set((Math.random()-0.5)*22, Math.random()*8+1.2, -280);
+  const g=buildEnemyDetailed(ENEMY_PALETTE[(Math.random()*ENEMY_PALETTE.length)|0]);
+  g.position.set((Math.random()-0.5)*26, Math.random()*11+0.9, -300);
   const d=difficulty();
-  const gunner=Math.random()<0.45;
-  g.userData={speed:d.enemySpeed + Math.random()*4, phase:Math.random()*Math.PI*2, hp:3, r:1.15, gunner, fireT: Math.random()*1.2+0.6};
+  const gunner=Math.random()<0.5;
+  g.userData={speed:d.enemySpeed + Math.random()*4, phase:Math.random()*Math.PI*2, hp:3, r:1.2, gunner, fireT: Math.random()*1.1+0.55};
   world.add(g); enemies.push(g);
 }
 
-/* FX (bright) */
+/* ===== Explosions ===== */
 function explodeAt(pos, baseColor=0xffcc55){
   const grp=new THREE.Group(); grp.position.copy(pos);
-  const flash=new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16),
+  const flash=new THREE.Mesh(new THREE.SphereGeometry(0.30, 18, 18),
     new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:1, blending:THREE.AdditiveBlending}));
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 16),
-    new THREE.MeshBasicMaterial({color:baseColor, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending}));
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(0.56, 18, 18),
+    new THREE.MeshBasicMaterial({color:baseColor, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending}));
   grp.add(flash,halo);
   const debrisMat=new THREE.MeshBasicMaterial({color:baseColor});
-  for(let i=0;i<18;i++){
+  for(let i=0;i<20;i++){
     const d=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.06,0.04), debrisMat);
-    d.position.set((Math.random()-0.5)*0.35,(Math.random()-0.5)*0.35,(Math.random()-0.5)*0.35);
+    d.position.set((Math.random()-0.5)*0.38,(Math.random()-0.5)*0.38,(Math.random()-0.5)*0.38);
     d.userData.v=new THREE.Vector3((Math.random()-0.5)*7,(Math.random()-0.2)*6,(Math.random()-0.5)*7);
     grp.add(d);
   }
-  const ring=new THREE.Mesh(new THREE.RingGeometry(0.12,0.14,40),
-    new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.95, side:THREE.DoubleSide, blending:THREE.AdditiveBlending}));
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.12,0.15,44),
+    new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.97, side:THREE.DoubleSide, blending:THREE.AdditiveBlending}));
   ring.rotation.x=Math.PI/2; grp.add(ring);
 
-  grp.userData.life=0.9;
+  grp.userData.life=0.95;
   grp.userData.update=(dt)=>{
     grp.userData.life-=dt;
-    const t=1-Math.max(0,grp.userData.life)/0.9;
-    flash.scale.setScalar(1+3.8*t); flash.material.opacity=1-t;
-    halo.scale.setScalar(1+2.2*t); halo.material.opacity=0.85*(1-t);
-    ring.scale.setScalar(1+7.4*t); ring.material.opacity=0.95*(1-t);
+    const t=1-Math.max(0,grp.userData.life)/0.95;
+    flash.scale.setScalar(1+4.0*t); flash.material.opacity=1-t;
+    halo.scale.setScalar(1+2.4*t); halo.material.opacity=0.9*(1-t);
+    ring.scale.setScalar(1+7.6*t); ring.material.opacity=0.97*(1-t);
     for(const c of grp.children){ if(c.userData && c.userData.v){ c.position.addScaledVector(c.userData.v,dt); c.userData.v.y -= 6*dt; } }
     return grp.userData.life<=0;
   };
@@ -365,7 +382,7 @@ function explodeAt(pos, baseColor=0xffcc55){
   audio.explosion();
 }
 
-/* Weapons (player) */
+/* ===== Weapons (player) ===== */
 function makeLaser(dir){
   const core=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.4,12), new THREE.MeshBasicMaterial({color:0xb8ffff}));
   core.rotation.x=Math.PI/2;
@@ -398,7 +415,7 @@ function fireMissile(){
   world.add(m); missiles.push(m);
 }
 
-/* Enemy lasers */
+/* ===== Enemy fire ===== */
 function enemyFire(from){
   const dir = playerShip.position.clone().sub(from.position).normalize();
   const boltCore=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.1,10), new THREE.MeshBasicMaterial({color:0xff6b6b}));
@@ -411,7 +428,7 @@ function enemyFire(from){
   world.add(bolt); enemyLasers.push(bolt);
 }
 
-/* Input */
+/* ===== Input ===== */
 const keys=new Set();
 addEventListener('keydown',e=>{ keys.add(e.code); if(e.code==='Space') fireLaser(); if(e.code==='KeyM') fireMissile(); });
 addEventListener('keyup',e=>{ keys.delete(e.code); });
@@ -422,7 +439,8 @@ window.addEventListener('mousemove',e=>{
   mouseNX = Math.max(-1,Math.min(1, (e.clientX-cx)/(r.width/2) ));
   mouseNY = Math.max(-1,Math.min(1, (cy-e.clientY)/(r.height/2) ));
 });
-/* Mobile joystick — FIXED: removed bad 'rect-top' typo */
+
+/* Mobile joystick */
 const joy = {active:false, base:[0,0], vec:[0,0], maxR:0};
 function joyReset(){ joy.active=false; joy.vec=[0,0]; moveStick(0,0); }
 function moveStick(nx,ny){ const base=joypad.getBoundingClientRect(); const r=Math.min(base.width,base.height)*0.23; stick.style.transform=`translate(-50%,-50%) translate(${nx*r}px,${-ny*r}px)`; }
@@ -435,7 +453,7 @@ joypad.addEventListener('touchmove',e=>{
   if(!joy.active) return;
   const t=e.touches[0]; const rect=joypad.getBoundingClientRect();
   const dx=(t.clientX-rect.left) - joy.base[0];
-  const dy= joy.base[1] - (t.clientY-rect.top);  // <-- fixed
+  const dy= joy.base[1] - (t.clientY-rect.top);
   let nx=dx/joy.maxR, ny=dy/joy.maxR; [nx,ny]=clampVec(nx,ny);
   joy.vec=[nx,ny]; moveStick(nx,ny);
 },{passive:true});
@@ -456,10 +474,10 @@ async function enableTilt(){
     if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
       const s=await DeviceOrientationEvent.requestPermission(); if(s!=='granted') throw new Error('Orientation permission denied');
     }
-    tiltEnabled=true; document.getElementById('tiltState').textContent='ON'; audio.start();
-  }catch(err){ tiltEnabled=false; document.getElementById('tiltState').textContent='DENIED'; console.warn(err); }
+    tiltEnabled=true; tiltStateEl.textContent='ON'; audio.start();
+  }catch(err){ tiltEnabled=false; tiltStateEl.textContent='DENIED'; console.warn(err); }
 }
-document.getElementById('btnTilt').addEventListener('click',enableTilt);
+btnTilt.addEventListener('click',enableTilt);
 window.addEventListener('deviceorientation',e=>{
   if(!tiltEnabled) return;
   const gamma=(e.gamma||0), beta=(e.beta||0);
@@ -467,27 +485,32 @@ window.addEventListener('deviceorientation',e=>{
   tiltVec.y = Math.max(-1, Math.min(1, -beta/50));
 });
 
-/* Controls */
-const bounds = { x: 13.5, yMin: 0.7, yMax: 10.2 };
+/* ===== Controls → Free-flight tuning =====
+   - Wider X range
+   - Taller Y range
+   - Slightly faster follow for snappier feel
+   - Everything stays non-reversed
+*/
+const bounds = { x: 18.5, yMin: 0.4, yMax: 12.4 }; // bigger box to roam across screen
 function updateControl(dt){
   const keyX = (keys.has('KeyA')||keys.has('ArrowLeft') ? -0.9 : 0) + (keys.has('KeyD')||keys.has('ArrowRight') ? +0.9 : 0);
   const keyY = (keys.has('KeyW')||keys.has('ArrowUp') ? +0.9 : 0) + (keys.has('KeyS')||keys.has('ArrowDown') ? -0.9 : 0);
   const jx = joy.vec[0]||0, jy = joy.vec[1]||0;
   const tx = tiltEnabled ? tiltVec.x : 0, ty = tiltEnabled ? tiltVec.y : 0;
 
-  const wantX = Math.max(-1, Math.min(1, mouseNX*1.0 + jx*1.0 + tx*0.6 + keyX*0.6 ));
-  const wantY = Math.max(-1, Math.min(1, mouseNY*1.0 + jy*1.0 + ty*0.6 + keyY*0.6 ));
+  const wantX = Math.max(-1, Math.min(1, mouseNX*1.0 + jx*1.0 + tx*0.7 + keyX*0.7 ));
+  const wantY = Math.max(-1, Math.min(1, mouseNY*1.0 + jy*1.0 + ty*0.7 + keyY*0.7 ));
 
   const targetX = wantX * bounds.x;
   const targetY = ((wantY + 1)/2) * (bounds.yMax - bounds.yMin) + bounds.yMin;
 
-  const follow = 0.28;
+  const follow = 0.32; // snappier
   player.x += (targetX - player.x) * follow;
   player.y += (targetY - player.y) * follow;
 
   playerShip.position.set(player.x, player.y, 0);
-  playerShip.rotation.z = -wantX*0.5;
-  playerShip.rotation.x = -wantY*0.25;
+  playerShip.rotation.z = -wantX*0.55;
+  playerShip.rotation.x = -wantY*0.28;
 }
 
 /* Collision helper */
@@ -519,9 +542,9 @@ requestAnimationFrame(function tick(now){
 /* World update */
 function difficultySpawn(){ const d=difficulty(); return d.spawnMin + Math.random()*(d.spawnMax-d.spawnMin); }
 function updateWorld(dt){
-  // camera follow
-  const desired = new THREE.Vector3(player.x*0.85, Math.max(bounds.yMin, player.y-1.2), 9.5);
-  camRig.position.lerp(desired, 0.15);
+  // camera follow (wider roam)
+  const desired = new THREE.Vector3(player.x*0.85, Math.max(bounds.yMin, player.y-1.1), 9.5);
+  camRig.position.lerp(desired, 0.16);
   camera.lookAt(playerShip.position.x, playerShip.position.y+0.2, 0);
 
   // spawn enemies
@@ -531,18 +554,18 @@ function updateWorld(dt){
   for(let i=enemies.length-1;i>=0;i--){
     const e=enemies[i];
     e.position.z += e.userData.speed*dt;
-    e.position.x += Math.sin(e.userData.phase + performance.now()*0.0013)*0.02;
+    e.position.x += Math.sin(e.userData.phase + performance.now()*0.0013)*0.03;
 
     if(e.userData.gunner){
       e.userData.fireT -= dt;
       if(e.userData.fireT<=0){
         enemyFire(e);
-        e.userData.fireT = 1.3 + Math.random()*1.3;
+        e.userData.fireT = 1.15 + Math.random()*1.15;
       }
     }
 
     // collide ship
-    const shipR=0.7;
+    const shipR=0.8;
     if(e.position.distanceTo(playerShip.position) < (e.userData.r + shipR)){
       explodeAt(e.position, 0xff7777);
       enemies.splice(i,1); world.remove(e);
@@ -588,7 +611,7 @@ function updateWorld(dt){
     m.userData.life-=dt; if(m.userData.life<=0){ missiles.splice(i,1); world.remove(m); continue; }
     let dir=new THREE.Vector3(0,0,-1);
     const t = nearestEnemy(m.position);
-    if(t){ const seek=t.position.clone().sub(m.position).normalize(); dir.lerp(seek, 0.2); }
+    if(t){ const seek=t.position.clone().sub(m.position).normalize(); dir.lerp(seek, 0.22); }
     const prev=m.userData.prev.clone();
     m.position.addScaledVector(dir.normalize(), m.userData.speed*dt);
     const curr=m.position.clone();
@@ -617,7 +640,7 @@ function updateWorld(dt){
     const prev=b.userData.prev.clone();
     b.position.addScaledVector(b.userData.v, dt);
     const curr=b.position.clone();
-    const center=playerShip.position, r=0.75;
+    const center=playerShip.position, r=0.85;
     if(segmentHitsSphere(prev,curr,center,r)){
       enemyLasers.splice(i,1); world.remove(b);
       damagePlayer(15);
