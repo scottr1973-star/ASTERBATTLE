@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Neon Star Run — Free-Flight + Detailed Enemies</title>
+<title>Neon Star Run — Wider X Range</title>
 <style>
   :root{
     --fg:#e6f1ff; --bg0:#060910; --bg1:#0b1530;
@@ -284,7 +284,7 @@ bestEl.textContent=player.best; hpEl.textContent=player.hp; scoreEl.textContent=
 const enemies=[], enemyLasers=[], lasers=[], missiles=[], fx=[];
 let gameTime=0;
 
-/* ===== Detailed rounded enemy ships (15-style, more outlines/panels) ===== */
+/* Detailed rounded enemy ships */
 const ENEMY_PALETTE=[0xff6d00,0xffd400,0x00ff88,0xff4081,0x66ff00];
 function buildEnemyDetailed(color){
   const g=new THREE.Group();
@@ -292,38 +292,31 @@ function buildEnemyDetailed(color){
   const dark = new THREE.MeshBasicMaterial({ color: 0x000000 });
   const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-  // Fuselage (rounded)
   const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.48,1.35,14,20), bright);
   fuse.rotation.x = Math.PI/2; fuse.position.set(0,0,0.1);
 
-  // Nose
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.40,0.8,28), white);
   nose.rotation.x=Math.PI/2; nose.position.set(0,0,1.18);
 
-  // Wings (swept)
   const wingGeo = new THREE.CylinderGeometry(0.06,0.22,1.35,16);
   const wingL = new THREE.Mesh(wingGeo, bright); wingL.rotation.set(0,0,Math.PI/2); wingL.position.set(-0.85,-0.05,-0.1);
   const wingR = wingL.clone(); wingR.position.x*=-1;
 
-  // Tail ring / thruster glow
   const thr = new THREE.Mesh(new THREE.TorusGeometry(0.26,0.065,14,40),
     new THREE.MeshBasicMaterial({color:0x66f7ff, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending}));
   thr.rotation.x=Math.PI/2; thr.position.set(0,0,-0.98);
 
-  // Canopy and windows
   const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.24,20,18), new THREE.MeshBasicMaterial({color:0x0b0b0b}));
   canopy.position.set(0,0.1,0.25);
   const win1 = new THREE.Mesh(new THREE.PlaneGeometry(0.46,0.18), dark); win1.position.set(0,0.20,0.48); win1.rotation.x=-Math.PI/2.2;
   const win2 = new THREE.Mesh(new THREE.PlaneGeometry(0.38,0.15), dark); win2.position.set(0,0.17,0.16); win2.rotation.x=-Math.PI/2.2;
 
-  // Panel lines (thin additive lines across fuselage)
   const panelMat = new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.9});
   const panelGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(-0.5,0,0.2), new THREE.Vector3(0.5,0,0.2) ]);
   const panel1 = new THREE.Line(panelGeo, panelMat);
   const panel2 = panel1.clone(); panel2.position.z = -0.2;
   const panel3 = panel1.clone(); panel3.position.z = -0.5;
 
-  // Outlines for major parts
   const outlines = new THREE.Group();
   const oFuse = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CapsuleGeometry(0.5,1.2,10,16)),
                     new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.9}));
@@ -349,7 +342,7 @@ function spawnEnemy(){
   world.add(g); enemies.push(g);
 }
 
-/* ===== Explosions ===== */
+/* Explosions */
 function explodeAt(pos, baseColor=0xffcc55){
   const grp=new THREE.Group(); grp.position.copy(pos);
   const flash=new THREE.Mesh(new THREE.SphereGeometry(0.30, 18, 18),
@@ -382,7 +375,7 @@ function explodeAt(pos, baseColor=0xffcc55){
   audio.explosion();
 }
 
-/* ===== Weapons (player) ===== */
+/* Weapons (player) */
 function makeLaser(dir){
   const core=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.4,12), new THREE.MeshBasicMaterial({color:0xb8ffff}));
   core.rotation.x=Math.PI/2;
@@ -415,7 +408,7 @@ function fireMissile(){
   world.add(m); missiles.push(m);
 }
 
-/* ===== Enemy fire ===== */
+/* Enemy fire */
 function enemyFire(from){
   const dir = playerShip.position.clone().sub(from.position).normalize();
   const boltCore=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.1,10), new THREE.MeshBasicMaterial({color:0xff6b6b}));
@@ -428,7 +421,7 @@ function enemyFire(from){
   world.add(bolt); enemyLasers.push(bolt);
 }
 
-/* ===== Input ===== */
+/* Input */
 const keys=new Set();
 addEventListener('keydown',e=>{ keys.add(e.code); if(e.code==='Space') fireLaser(); if(e.code==='KeyM') fireMissile(); });
 addEventListener('keyup',e=>{ keys.delete(e.code); });
@@ -485,13 +478,11 @@ window.addEventListener('deviceorientation',e=>{
   tiltVec.y = Math.max(-1, Math.min(1, -beta/50));
 });
 
-/* ===== Controls → Free-flight tuning =====
-   - Wider X range
-   - Taller Y range
-   - Slightly faster follow for snappier feel
-   - Everything stays non-reversed
+/* ===== Controls → **MUCH** wider X range =====
+   - bounds.x from ~18.5 → 26.5 so you can reach far-side enemies
+   - kept tall Y range and snappy follow
 */
-const bounds = { x: 18.5, yMin: 0.4, yMax: 12.4 }; // bigger box to roam across screen
+const bounds = { x: 26.5, yMin: 0.4, yMax: 12.4 };
 function updateControl(dt){
   const keyX = (keys.has('KeyA')||keys.has('ArrowLeft') ? -0.9 : 0) + (keys.has('KeyD')||keys.has('ArrowRight') ? +0.9 : 0);
   const keyY = (keys.has('KeyW')||keys.has('ArrowUp') ? +0.9 : 0) + (keys.has('KeyS')||keys.has('ArrowDown') ? -0.9 : 0);
@@ -504,7 +495,7 @@ function updateControl(dt){
   const targetX = wantX * bounds.x;
   const targetY = ((wantY + 1)/2) * (bounds.yMax - bounds.yMin) + bounds.yMin;
 
-  const follow = 0.32; // snappier
+  const follow = 0.32;
   player.x += (targetX - player.x) * follow;
   player.y += (targetY - player.y) * follow;
 
@@ -542,9 +533,9 @@ requestAnimationFrame(function tick(now){
 /* World update */
 function difficultySpawn(){ const d=difficulty(); return d.spawnMin + Math.random()*(d.spawnMax-d.spawnMin); }
 function updateWorld(dt){
-  // camera follow (wider roam)
-  const desired = new THREE.Vector3(player.x*0.85, Math.max(bounds.yMin, player.y-1.1), 9.5);
-  camRig.position.lerp(desired, 0.16);
+  // camera follow (scaled a bit stronger on X so far-side shots line up)
+  const desired = new THREE.Vector3(player.x*0.95, Math.max(bounds.yMin, player.y-1.05), 9.5);
+  camRig.position.lerp(desired, 0.17);
   camera.lookAt(playerShip.position.x, playerShip.position.y+0.2, 0);
 
   // spawn enemies
