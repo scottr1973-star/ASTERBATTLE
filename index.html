@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Neon Star Run — Early Frigates/Warheads, Gentle Fighters, 3-Minute Steps</title>
+<title>Neon Star Run — Enemy Shots = Straight Red Lasers (No Homing)</title>
 <style>
   :root{ --fg:#e6f1ff; --bg0:#060910; --bg1:#0b1530; --hud:#00e0ff; --ret:#ff355e; }
   html,body{
@@ -205,39 +205,39 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
 
 const scene=new THREE.Scene();
-scene.fog=new THREE.Fog(0x03060c,140,1200);
+scene.fog=new THREE.Fog(0x03060c,140,1600);
 
 const world=new THREE.Group(); scene.add(world);
 
-const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,3000);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,4000);
 const camRig=new THREE.Group(); scene.add(camRig); camRig.add(camera);
-camera.position.set(0,3.2,9.5);
+camera.position.set(0,4.2,10.5);
 
 /* Lights */
 scene.add(new THREE.HemisphereLight(0x88ccff,0x001015,0.9));
 const dl=new THREE.DirectionalLight(0xffffff,0.65); dl.position.set(4,8,6); scene.add(dl);
 
 /* Grid + Stars + Speed lines */
-const grid=new THREE.GridHelper(2400,160,0x00ffff,0x00ffff);
+const grid=new THREE.GridHelper(3000,200,0x00ffff,0x00ffff);
 grid.material.transparent=true; grid.material.opacity=0.22; world.add(grid);
 
-const STAR_COUNT=900;
+const STAR_COUNT=1100;
 const starGeo=new THREE.BufferGeometry(), starPos=new Float32Array(STAR_COUNT*3);
-for(let i=0;i<STAR_COUNT;i++){ starPos[i*3]=(Math.random()-0.5)*360; starPos[i*3+1]=Math.random()*170+8; starPos[i*3+2]=-Math.random()*1400-80; }
+for(let i=0;i<STAR_COUNT;i++){ starPos[i*3]=(Math.random()-0.5)*420; starPos[i*3+1]=Math.random()*240+8; starPos[i*3+2]=-Math.random()*1800-80; }
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
 const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({size:1.0,color:0x99ddff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
 world.add(stars);
 
-const SPEED_LINES=220;
+const SPEED_LINES=260;
 const spdGeo=new THREE.BufferGeometry(), spdPos=new Float32Array(SPEED_LINES*6);
-function resetLine(i, zoff= -1200*Math.random()-80){
-  const x=(Math.random()-0.5)*32, y=Math.random()*10+1.2, z=zoff, len=(Math.random()*5+3);
+function resetLine(i, zoff= -1600*Math.random()-80){
+  const x=(Math.random()-0.5)*36, y=Math.random()*16+1.2, z=zoff, len=(Math.random()*6+3.5);
   spdPos[i*6+0]=x; spdPos[i*6+1]=y; spdPos[i*6+2]=z;
   spdPos[i*6+3]=x; spdPos[i*6+4]=y; spdPos[i*6+5]=z+len;
 }
 for(let i=0;i<SPEED_LINES;i++) resetLine(i);
 spdGeo.setAttribute('position', new THREE.BufferAttribute(spdPos,3));
-const speedLines=new THREE.LineSegments(spdGeo, new THREE.LineBasicMaterial({ color:0x77e5ff, transparent:true, opacity:0.32 }));
+const speedLines=new THREE.LineSegments(spdGeo, new THREE.LineBasicMaterial({ transparent:true, opacity:0.32 }));
 world.add(speedLines);
 
 /* ===== Player ===== */
@@ -257,7 +257,7 @@ const playerShip=new THREE.Group();
 })();
 scene.add(playerShip);
 
-const player={ x:0,y:5.2, hp:100, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
+const player={ x:0,y:6.5, hp:100, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
 bestEl.textContent=player.best; hpEl.textContent=player.hp; scoreEl.textContent=player.score;
 
 /* ===== Inputs ===== */
@@ -315,7 +315,7 @@ window.addEventListener('deviceorientation',e=>{
 });
 
 /* ===== Controls (higher ceiling) ===== */
-const bounds = { x: 18.5, yMin: 0.4, yMax: 13.6 };
+const bounds = { x: 19.5, yMin: 0.4, yMax: 19.5 };
 function updateControl(dt){
   const keyX = (keys.has('KeyA')||keys.has('ArrowLeft') ? -0.9 : 0) + (keys.has('KeyD')||keys.has('ArrowRight') ? +0.9 : 0);
   const keyY = (keys.has('KeyW')||keys.has('ArrowUp') ? +0.9 : 0) + (keys.has('KeyS')||keys.has('ArrowDown') ? -0.9 : 0);
@@ -358,7 +358,7 @@ function buildFighter(){
   const outline=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.9,0.34,1.2)), new THREE.LineBasicMaterial({color:0x000000,opacity:0.9,transparent:true}));
   outline.position.z=-0.1;
   g.add(fuse,nose,wL,wR,outline);
-  g.userData={type:TYPE.FIGHTER,hp:3,r:1.0,fireCD: 1.5};
+  g.userData={type:TYPE.FIGHTER,hp:3,r:1.0,fireCD: 1.6};
   return g;
 }
 
@@ -373,7 +373,7 @@ function buildFrigate(){
   nose.rotation.x=Math.PI/2; nose.position.set(0,.05,1.55);
   const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.8,0.5,2.8)), new THREE.LineBasicMaterial({color:0x000}));
   g.add(body,wingL,wingR,nose,outline);
-  g.userData={type:TYPE.FRIGATE,hp:8,r:1.35,fireCD: 1.9};
+  g.userData={type:TYPE.FRIGATE,hp:8,r:1.35,fireCD: 2.1};
   return g;
 }
 
@@ -386,47 +386,53 @@ function buildWarhead(){
   const fins=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.06,0.6), new THREE.MeshStandardMaterial({color:0xbbbbbb,metalness:0.4,roughness:0.5}));
   fins.position.set(0,-0.05,-0.6);
   g.add(shell,tip,fins);
-  g.userData={type:TYPE.WARHEAD,hp:2,r:0.9,seek:0.22,speedBoost:1.25};
+  // NO HOMING: ship flies straight (velocity picked once at spawn)
+  g.userData={type:TYPE.WARHEAD,hp:2,r:0.9};
   return g;
 }
 
-/* ===== Difficulty: 3-minute steps, early frigates/warheads, gentle fighters ===== */
+/* ===== Difficulty (ships > guns early; 3-min steps) ===== */
 function difficulty(){
-  const phase = Math.floor(gameTime / 180); // step every 3 minutes
-  const k     = Math.min(phase, 10);        // track to ~30 minutes
-  const t     = k / 10;                     // 0..1 blend from start→30min
+  const phase = Math.floor(gameTime / 180);
+  const k     = Math.min(phase, 10);
+  const t     = k / 10;
 
-  // Core pacing
   const baseSpeed  = 10;
-  const baseMin    = 4.8;
-  const baseMax    = 5.8;
+  const baseMin    = 2.6;
+  const baseMax    = 3.2;
   const dSpeedPerK = 4.0;
-  const dSpawnPerK = 0.50;
+  const dSpawnPerK = 0.35;
 
   const enemySpeed = baseSpeed + dSpeedPerK * k;
-  const spawnMin   = Math.max(1.8, baseMin - dSpawnPerK * k);
-  const spawnMax   = Math.max(2.4, baseMax - dSpawnPerK * k);
+  const spawnMin   = Math.max(1.2, baseMin - dSpawnPerK * k);
+  const spawnMax   = Math.max(1.7, baseMax - dSpawnPerK * k);
 
-  // Weights: start mostly FRIGATE + WARHEAD; fighters phase in slowly
-  // Start: [Fighter 0.15, Frigate 0.55, Warhead 0.30]
-  // End:   [Fighter 0.45, Frigate 0.35, Warhead 0.20]
-  const wStart = { F: 0.15, G: 0.55, W: 0.30 };
-  const wEnd   = { F: 0.45, G: 0.35, W: 0.20 };
+  const wStart = { F: 0.08, G: 0.46, W: 0.46 };
+  const wEnd   = { F: 0.38, G: 0.42, W: 0.20 };
   const wF = wStart.F + (wEnd.F - wStart.F) * t;
   const wG = wStart.G + (wEnd.G - wStart.G) * t;
   const wW = wStart.W + (wEnd.W - wStart.W) * t;
   const sum = wF + wG + wW;
   const weights = { fighter: wF/sum, frigate: wG/sum, warhead: wW/sum };
 
-  // Fighter laser aggression stays enjoyable
-  // Start: 30% gunners, 1.3–2.2s; +4% per phase, cap 60%; ROF floors 0.70–1.20s
+  // first 60s: no enemy shooting
+  const fireGate = gameTime < 60 ? 0 : 1;
+
+  // fewer shooters early, slower ROF
   const fighter = {
-    gunChance: Math.min(0.60, 0.30 + 0.04 * k),
-    cdMin:     Math.max(0.70, 1.30 - 0.08 * k),
-    cdMax:     Math.max(1.20, 2.20 - 0.15 * k),
+    gunChance: fireGate * Math.min(0.35, 0.10 + 0.03 * k),
+    cdMin:     Math.max(1.40, 2.40 - 0.14 * k),
+    cdMax:     Math.max(2.20, 3.40 - 0.18 * k),
+  };
+  const frigate = {
+    cdMin: fireGate * Math.max(1.60, 2.60 - 0.12 * k),
+    cdMax: fireGate * Math.max(2.40, 3.60 - 0.18 * k),
   };
 
-  return { enemySpeed, spawnMin, spawnMax, weights, phase: k, fighter };
+  // straight lasers speed
+  const boltSpeed = 120 + 18 * k;
+
+  return { enemySpeed, spawnMin, spawnMax, weights, phase:k, fighter, frigate, boltSpeed, fireGate };
 }
 function chooseType(w){
   const r = Math.random();
@@ -446,19 +452,28 @@ function spawnEnemy(){
         : (t===TYPE.FRIGATE) ? buildFrigate()
         : buildWarhead();
 
-  g.position.set((Math.random()-0.5)*26, Math.random()*11+0.9, -300);
+  // Wider & taller spawn field
+  g.position.set((Math.random()-0.5)*30, Math.random()*15.5+0.9, -360);
   g.userData.phase = Math.random()*Math.PI*2;
-  g.userData.speed = d.enemySpeed * (t===TYPE.FRIGATE ? 0.80 : (t===TYPE.WARHEAD ? 1.08 : 1.00))
+  g.userData.speed = d.enemySpeed * (t===TYPE.FRIGATE ? 0.80 : (t===TYPE.WARHEAD ? 1.10 : 1.00))
                    + Math.random()*3.0;
 
-  // Fighters: not all are gunners; slower ROF early
+  // WARHEAD ships: pick a straight velocity once (roughly toward player) — NO steering later
+  if (t===TYPE.WARHEAD){
+    const toP = playerShip.position.clone().sub(g.position).normalize();
+    // slight spread so they’re dodgeable
+    toP.x += (Math.random()-0.5)*0.2;
+    toP.y += (Math.random()-0.5)*0.2;
+    toP.normalize();
+    g.userData.vel = toP.multiplyScalar(24 * 1.25);
+  }
+
   if (t === TYPE.FIGHTER) {
     g.userData.gunner = Math.random() < d.fighter.gunChance;
     g.userData.fireCD = d.fighter.cdMin + Math.random() * (d.fighter.cdMax - d.fighter.cdMin);
   }
-  // Frigates: set initial cooldown so they aren't instant volleys
   if (t === TYPE.FRIGATE) {
-    g.userData.fireCD = 1.6 + Math.random()*1.0;
+    g.userData.fireCD = d.frigate.cdMin + Math.random() * (d.frigate.cdMax - d.frigate.cdMin);
   }
 
   world.add(g); enemies.push(g);
@@ -518,31 +533,43 @@ function fireLaser(){
   world.add(beam); lasers.push(beam);
   audio.laser();
 }
-function findNearestEnemy(){
+function findNearestEnemyFrom(p){
   let best=null,bestD=Infinity,tmp=new THREE.Vector3();
-  for(const e of enemies){ tmp.copy(e.position).sub(playerShip.position); const d=tmp.lengthSq(); if(d<bestD){ bestD=d; best=e; } }
+  for(const e of enemies){ tmp.copy(e.position).sub(p); const d=tmp.lengthSq(); if(d<bestD){ bestD=d; best=e; } }
   return best;
 }
 function fireMissile(){
   if(player.missileCD>0) return; player.missileCD=1.0;
-  const target=findNearestEnemy();
-  const m=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.6,4,8), new THREE.MeshBasicMaterial({color:0xffaa33}));
-  m.position.copy(playerShip.position).add(new THREE.Vector3(0,-0.05,0.4));
-  m.userData={speed:110, life:3.0, r:.34, damage:3, target, prev:m.position.clone()};
+  const origin=playerShip.position.clone().add(new THREE.Vector3(0,-0.05,0.4));
+  const m=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.8,4,8), new THREE.MeshBasicMaterial({color:0xffaa33}));
+  m.position.copy(origin);
+  // Player missiles: longer range & accurate (kept)
+  m.userData={ speed:140, life:5.0, r:.34, damage:3, target:null, turn:0.38, prev:origin.clone() };
   world.add(m); missiles.push(m);
 }
 
-/* ===== Enemy fire ===== */
+/* ===== Enemy fire: STRAIGHT red lasers (never homing) ===== */
 function enemyFire(from, twin=false){
+  const d = difficulty();
+
+  // sample aim ONCE; no updates afterwards
   const aim = playerShip.position.clone().sub(from.position).normalize();
+  // tiny random spread so it’s readable & dodgeable
+  aim.x += (Math.random()-0.5)*0.06;
+  aim.y += (Math.random()-0.5)*0.06;
+  aim.normalize();
+
   const mkBolt = (offset=0)=>{
-    const boltCore=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.1,10), new THREE.MeshBasicMaterial({color:0xff6b6b}));
+    const length = 1.8;
+    const boltCore=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,length,12), new THREE.MeshBasicMaterial({color:0xff4a3a}));
     boltCore.rotation.x=Math.PI/2;
-    const boltGlow=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,1.1,12), new THREE.MeshBasicMaterial({color:0xff4444, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending}));
+    const boltGlow=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,length,16), new THREE.MeshBasicMaterial({color:0xff1d14, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending}));
     boltGlow.rotation.x=Math.PI/2;
     const bolt=new THREE.Group(); bolt.add(boltGlow,boltCore);
     bolt.position.copy(from.position).add(new THREE.Vector3(offset,0,0.4));
-    bolt.userData={v:aim.clone().multiplyScalar(170), life:2.0, r:.28, prev: bolt.position.clone()};
+    // store immutable velocity; DO NOT change later
+    const v = aim.clone().multiplyScalar(d.boltSpeed);
+    bolt.userData={v, life:2.0, r:.26, prev: bolt.position.clone(), homing:false};
     world.add(bolt); enemyBolts.push(bolt);
   };
   mkBolt(0);
@@ -577,7 +604,7 @@ requestAnimationFrame(function tick(now){
 /* ===== World update ===== */
 function updateWorld(dt){
   // camera follow
-  const desired = new THREE.Vector3(player.x*0.85, Math.max(bounds.yMin, player.y-1.1), 9.5);
+  const desired = new THREE.Vector3(player.x*0.85, Math.max(bounds.yMin, player.y-0.9), 10.5);
   camRig.position.lerp(desired, 0.16);
   camera.lookAt(playerShip.position.x, playerShip.position.y+0.2, 0);
 
@@ -590,10 +617,10 @@ function updateWorld(dt){
     e.position.z += e.userData.speed*dt;
     e.position.x += Math.sin(e.userData.phase + performance.now()*0.0013)*0.03;
 
-    // behavior per type
+    // per-type behavior
     if(e.userData.type===TYPE.FIGHTER){
       const d = difficulty();
-      if (e.userData.gunner) {
+      if (e.userData.gunner && d.fireGate){
         e.userData.fireCD -= dt;
         if(e.userData.fireCD<=0){
           enemyFire(e,false);
@@ -601,15 +628,17 @@ function updateWorld(dt){
         }
       }
     }else if(e.userData.type===TYPE.FRIGATE){
-      e.userData.fireCD -= dt;
-      if(e.userData.fireCD<=0){
-        enemyFire(e,true);
-        e.userData.fireCD = 1.4 + Math.random()*1.0;
+      const d = difficulty();
+      if (d.fireGate){
+        e.userData.fireCD -= dt;
+        if(e.userData.fireCD<=0){
+          enemyFire(e,true);
+          e.userData.fireCD = d.frigate.cdMin + Math.random() * (d.frigate.cdMax - d.frigate.cdMin);
+        }
       }
     }else if(e.userData.type===TYPE.WARHEAD){
-      // home slightly toward player
-      const toP = playerShip.position.clone().sub(e.position).normalize();
-      e.position.addScaledVector(toP, dt * 24 * e.userData.speedBoost);
+      // WARHEAD ship straight flight — use immutable vel chosen at spawn
+      if(e.userData.vel){ e.position.addScaledVector(e.userData.vel, dt); }
     }
 
     // collide ship
@@ -658,9 +687,13 @@ function updateWorld(dt){
   for(let i=missiles.length-1;i>=0;i--){
     const m=missiles[i];
     m.userData.life-=dt; if(m.userData.life<=0){ missiles.splice(i,1); world.remove(m); continue; }
+
+    const target = findNearestEnemyFrom(m.position);
     let dir=new THREE.Vector3(0,0,-1);
-    const t = nearestEnemy(m.position);
-    if(t){ const seek=t.position.clone().sub(m.position).normalize(); dir.lerp(seek, 0.22); }
+    if(target){
+      const seek = target.position.clone().sub(m.position).normalize();
+      dir.lerp(seek, m.userData.turn);
+    }
     const prev=m.userData.prev.clone();
     m.position.addScaledVector(dir.normalize(), m.userData.speed*dt);
     const curr=m.position.clone();
@@ -684,11 +717,16 @@ function updateWorld(dt){
     m.userData.prev.copy(curr);
   }
 
-  // enemy bolts → player
+  // enemy bolts → player (STRAIGHT — velocity never changes)
   for(let i=enemyBolts.length-1;i>=0;i--){
     const b=enemyBolts[i];
+
+    // sanity: freeze any accidental fields that could cause steering
+    if(b.userData.target){ b.userData.target=null; }
+    if(b.userData.turn){ b.userData.turn=0; }
+
     const prev=b.userData.prev.clone();
-    b.position.addScaledVector(b.userData.v, dt);
+    b.position.addScaledVector(b.userData.v, dt); // straight line forever
     const curr=b.position.clone();
     const center=playerShip.position, r=0.85;
     if(segmentHitsSphere(prev,curr,center,r)){
@@ -700,7 +738,7 @@ function updateWorld(dt){
     b.userData.life-=dt; if(b.userData.life<=0){ enemyBolts.splice(i,1); world.remove(b); }
   }
 
-  // FX
+  // FX cleanup
   for(let i=fx.length-1;i>=0;i--){
     const f=fx[i]; if(f.userData.update?.(dt)){ fx.splice(i,1); world.remove(f); }
   }
@@ -708,12 +746,12 @@ function updateWorld(dt){
   // Background motion
   const sp=starGeo.attributes.position;
   for(let i=0;i<sp.count;i++){
-    let z=sp.getZ(i)+12*dt; if(z>50) z = -1400- Math.random()*200; sp.setZ(i,z);
+    let z=sp.getZ(i)+12*dt; if(z>50) z = -1800- Math.random()*200; sp.setZ(i,z);
   } sp.needsUpdate=true;
 
   for(let i=0;i<SPEED_LINES;i++){
     let z0=spdPos[i*6+2], z1=spdPos[i*6+5];
-    z0+=40*dt; z1+=40*dt;
+    z0+=42*dt; z1+=42*dt;
     if(z1>40) resetLine(i);
     else { spdPos[i*6+2]=z0; spdPos[i*6+5]=z1; }
   }
