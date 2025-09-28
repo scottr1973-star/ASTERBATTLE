@@ -339,10 +339,10 @@ function difficulty(){
   const t     = k / 10;
 
   // *** ADJUSTED FOR MUCH SLOWER ENEMIES ***
-  const baseSpeed  = 3.5;   // Much slower base (was 3.5)
-  const dSpeedPerK = 0.8;   // Very gentle ramp (was 0.8)
+  const baseSpeed  = 1.0;   // Much slower base (was 3.5)
+  const dSpeedPerK = 0.5;   // Very gentle ramp (was 0.8)
 
-  const baseMin    = 2.6;   // spawn window (unchanged)
+  const baseMin    = 3.6;   // spawn window (unchanged)
   const baseMax    = 3.2;
   const dSpawnPerK = 0.35;
 
@@ -754,4 +754,5 @@ btnFull.onclick=()=>{ document.fullscreenElement?document.exitFullscreen():docum
 </script>
 </body>
 </html>
+
 
