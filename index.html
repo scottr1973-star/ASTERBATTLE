@@ -195,6 +195,12 @@ const audio = (() => {
 })();
 
 /* ===== Three.js ===== */
+if (typeof THREE === 'undefined') {
+  const box = document.getElementById('err');
+  if (box) { box.style.display='block'; box.textContent = 'Three.js failed to load (no internet or CDN blocked). Splash screen is visible; press Start after reconnecting.'; }
+  // Keep the splash visible and stop further initialization.
+  throw new Error('THREE not loaded');
+}
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -408,8 +414,8 @@ function difficulty(){
   // Weights: start mostly FRIGATE + WARHEAD; fighters phase in slowly
   // Start: [Fighter 0.15, Frigate 0.55, Warhead 0.30]
   // End:   [Fighter 0.45, Frigate 0.35, Warhead 0.20]
-  const wStart = { F: 0.15, G: 0.55, W: 0.30 };
-  const wEnd   = { F: 0.45, G: 0.35, W: 0.20 };
+  const wStart = { F: 0.20, G: 0.20, W: 0.20, R: 0.40 }; // Start ratios — Raider is main (2:1 vs Frigate)
+  const wEnd   = { F: 0.30, G: 0.22, W: 0.18, R: 0.44 }; // Late game — keep ~2:1 Raider:Frigate
   const wF = wStart.F + (wEnd.F - wStart.F) * t;
   const wG = wStart.G + (wEnd.G - wStart.G) * t;
   const wW = wStart.W + (wEnd.W - wStart.W) * t;
