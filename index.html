@@ -311,8 +311,9 @@ window.addEventListener('deviceorientation',e=>{
 });
 
 /* ===== Controls (higher ceiling) ===== */
-// MODIFIED: Expanded bounds for more freedom of movement
-const bounds = { x: 45.0, yMin: -2.0, yMax: 35.0 };
+// MODIFIED: Increased 'x' to 60.0 for wider horizontal movement.
+// Increased 'follow' to 0.45 for faster response/agility.
+const bounds = { x: 60.0, yMin: -2.0, yMax: 35.0 };
 function updateControl(dt){
   const keyX = (keys.has('KeyA')||keys.has('ArrowLeft') ? -0.9 : 0) + (keys.has('KeyD')||keys.has('ArrowRight') ? +0.9 : 0);
   const keyY = (keys.has('KeyW')||keys.has('ArrowUp') ? +0.9 : 0) + (keys.has('KeyS')||keys.has('ArrowDown') ? -0.9 : 0);
@@ -325,7 +326,7 @@ function updateControl(dt){
   const targetX = wantX * bounds.x;
   const targetY = ((wantY + 1)/2) * (bounds.yMax - bounds.yMin) + bounds.yMin;
 
-  const follow = 0.32;
+  const follow = 0.45; // INCREASED: Faster movement to the target position
   player.x += (targetX - player.x) * follow;
   player.y += (targetY - player.y) * follow;
 
