@@ -86,7 +86,6 @@
 
   <div id="reticle"></div>
 
-  <!-- Splash -->
   <div id="startOverlay" class="overlay" aria-modal="true" role="dialog">
     <div id="startCard" class="card">
       <h1>Neon Star Run</h1>
@@ -101,7 +100,6 @@
     </div>
   </div>
 
-  <!-- Pause -->
   <div id="pauseOverlay" class="overlay" style="display:none">
     <div class="card">
       <h2>Paused</h2>
@@ -112,7 +110,6 @@
     </div>
   </div>
 
-  <!-- Cockpit (behind HUD) -->
   <div id="cockpit">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <path class="ck-line" d="M3,10 C18,2 82,2 97,10" />
@@ -125,7 +122,6 @@
     </svg>
   </div>
 
-  <!-- Mobile controls -->
   <div id="mobileControls">
     <div id="joypad">
       <div class="stickBase"></div>
@@ -257,7 +253,7 @@ const playerShip=new THREE.Group();
 })();
 scene.add(playerShip);
 
-const player={ x:0,y:5.2, hp:100, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
+const player={ x:0,y:5.2, hp:200, score:0, best:Number(localStorage.getItem('nsr_best')||0), fireCD:0, missileCD:0 };
 bestEl.textContent=player.best; hpEl.textContent=player.hp; scoreEl.textContent=player.score;
 
 /* ===== Inputs ===== */
@@ -542,7 +538,7 @@ function enemyFire(from, twin=false){
     boltGlow.rotation.x=Math.PI/2;
     const bolt=new THREE.Group(); bolt.add(boltGlow,boltCore);
     bolt.position.copy(from.position).add(new THREE.Vector3(offset,0,0.4));
-    bolt.userData={v:aim.clone().multiplyScalar(170), life:2.0, r:.28, prev: bolt.position.clone()};
+    bolt.userData={v:aim.clone().multiplyScalar(110), life:2.0, r:.28, prev: bolt.position.clone()};
     world.add(bolt); enemyBolts.push(bolt);
   };
   mkBolt(0);
@@ -634,22 +630,40 @@ function updateWorld(dt){
     l.position.addScaledVector(l.userData.v, dt);
     const curr = l.position.clone();
 
-    let hitIdx=-1;
+    // Check for collision with enemies
+    let hitEnemy = false;
     for(let j=enemies.length-1;j>=0;j--){
       const e=enemies[j];
-      if(segmentHitsSphere(prev,curr,e.position, e.userData.r + l.userData.r)){ e.userData.hp -= l.userData.damage; hitIdx=j; break; }
-    }
-    if(hitIdx>=0){
-      const e=enemies[hitIdx];
-      const big = (e.userData.type===TYPE.WARHEAD);
-      if(e.userData.hp<=0){
-        explodeAt(e.position, big?0xffdd66:0xffcc55, big);
-        enemies.splice(hitIdx,1); world.remove(e);
-        addScore(e.userData.type===TYPE.FRIGATE?25:(e.userData.type===TYPE.WARHEAD?15:10));
+      if(segmentHitsSphere(prev,curr,e.position, e.userData.r + l.userData.r)){
+        e.userData.hp -= l.userData.damage;
+        const big = (e.userData.type===TYPE.WARHEAD);
+        if(e.userData.hp<=0){
+          explodeAt(e.position, big?0xffdd66:0xffcc55, big);
+          enemies.splice(j,1); world.remove(e);
+          addScore(e.userData.type===TYPE.FRIGATE?25:(e.userData.type===TYPE.WARHEAD?15:10));
+          if(e.userData.type===TYPE.WARHEAD) addHealth(20);
+        }
+        lasers.splice(i,1); world.remove(l);
+        hitEnemy = true;
+        break;
       }
-      lasers.splice(i,1); world.remove(l);
-      continue;
     }
+    if (hitEnemy) continue;
+
+    // Check for collision with enemy bolts
+    let hitBolt = false;
+    for (let k = enemyBolts.length - 1; k >= 0; k--) {
+        const b = enemyBolts[k];
+        if (segmentHitsSphere(prev, curr, b.position, b.userData.r + l.userData.r)) {
+            lasers.splice(i, 1); world.remove(l);
+            enemyBolts.splice(k, 1); world.remove(b);
+            explodeAt(b.position, 0xff88ff, false);
+            hitBolt = true;
+            break;
+        }
+    }
+    if (hitBolt) continue;
+
     l.userData.prev.copy(curr);
     l.userData.life-=dt; if(l.userData.life<=0){ lasers.splice(i,1); world.remove(l); }
   }
@@ -665,22 +679,40 @@ function updateWorld(dt){
     m.position.addScaledVector(dir.normalize(), m.userData.speed*dt);
     const curr=m.position.clone();
 
-    let hitIdx=-1;
+    // Check for collision with enemies
+    let hitEnemy = false;
     for(let j=enemies.length-1;j>=0;j--){
       const e=enemies[j];
-      if(segmentHitsSphere(prev,curr,e.position, e.userData.r + m.userData.r)){ e.userData.hp -= m.userData.damage; hitIdx=j; break; }
-    }
-    if(hitIdx>=0){
-      const e=enemies[hitIdx];
-      const big = (e.userData.type===TYPE.WARHEAD);
-      if(e.userData.hp<=0){
-        explodeAt(e.position, big?0xffdd66:0xffcc55, big);
-        enemies.splice(hitIdx,1); world.remove(e);
-        addScore(e.userData.type===TYPE.FRIGATE?25:(e.userData.type===TYPE.WARHEAD?15:10));
+      if(segmentHitsSphere(prev,curr,e.position, e.userData.r + m.userData.r)){
+        e.userData.hp -= m.userData.damage;
+        const big = (e.userData.type===TYPE.WARHEAD);
+        if(e.userData.hp<=0){
+          explodeAt(e.position, big?0xffdd66:0xffcc55, big);
+          enemies.splice(j,1); world.remove(e);
+          addScore(e.userData.type===TYPE.FRIGATE?25:(e.userData.type===TYPE.WARHEAD?15:10));
+          if(e.userData.type===TYPE.WARHEAD) addHealth(20);
+        }
+        missiles.splice(i,1); world.remove(m);
+        hitEnemy = true;
+        break;
       }
-      missiles.splice(i,1); world.remove(m);
-      continue;
     }
+    if(hitEnemy) continue;
+    
+    // Check for collision with enemy bolts
+    let hitBolt = false;
+    for (let k = enemyBolts.length - 1; k >= 0; k--) {
+        const b = enemyBolts[k];
+        if (segmentHitsSphere(prev, curr, b.position, b.userData.r + m.userData.r)) {
+            missiles.splice(i, 1); world.remove(m);
+            enemyBolts.splice(k, 1); world.remove(b);
+            explodeAt(b.position, 0xff88ff, false);
+            hitBolt = true;
+            break;
+        }
+    }
+    if (hitBolt) continue;
+
     m.userData.prev.copy(curr);
   }
 
@@ -733,6 +765,9 @@ function nearestEnemy(from){
 function addScore(n){
   player.score+=n; scoreEl.textContent=player.score;
   if(player.score>player.best){ player.best=player.score; bestEl.textContent=player.best; localStorage.setItem('nsr_best', String(player.best)); }
+}
+function addHealth(n){
+  player.hp=Math.min(200, player.hp+n); hpEl.textContent=player.hp;
 }
 function damagePlayer(n){
   player.hp=Math.max(0,player.hp-n); hpEl.textContent=player.hp; if(player.hp<=0) location.reload();
